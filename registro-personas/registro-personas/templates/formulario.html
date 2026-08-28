@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ "Editar" if persona else "Agregar" }} Persona</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 500px; margin: 40px auto; padding: 0 20px; color: #222; }
+        h1 { color: #333; }
+        label { display: block; margin-top: 12px; font-weight: bold; }
+        input { width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; }
+        .btn { display: inline-block; padding: 8px 14px; text-decoration: none; border-radius: 4px; color: white; font-size: 14px; border: none; cursor: pointer; }
+        .btn-save { background-color: #2e7d32; margin-top: 18px; }
+        .btn-cancel { background-color: #757575; margin-top: 18px; margin-left: 8px; }
+        .flash { background: #fff3cd; padding: 10px; border-radius: 4px; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+    <h1>{{ "Editar" if persona else "Agregar" }} Persona</h1>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="flash">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST">
+        <label for="nombre">Nombre</label>
+        <input type="text" id="nombre" name="nombre" value="{{ persona.nombre if persona else '' }}" required>
+
+        <label for="apellido">Apellido</label>
+        <input type="text" id="apellido" name="apellido" value="{{ persona.apellido if persona else '' }}" required>
+
+        <label for="edad">Edad</label>
+        <input type="number" id="edad" name="edad" value="{{ persona.edad if persona else '' }}" required>
+
+        <label for="correo">Correo</label>
+        <input type="email" id="correo" name="correo" value="{{ persona.correo if persona else '' }}">
+
+        <button class="btn btn-save" type="submit">Guardar</button>
+        <a class="btn btn-cancel" href="{{ url_for('index') }}">Cancelar</a>
+    </form>
+</body>
+</html>
