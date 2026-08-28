@@ -1,15 +1,33 @@
+import os
+
 from flask import Flask, render_template, request, redirect, url_for, flash
 from models import db, Persona
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///personas.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.secret_key = "cambia-esta-clave-por-una-segura"
+app.secret_key = os.environ.get("SECRET_KEY", "cambia-esta-clave-por-una-segura")
 
 db.init_app(app)
 
 with app.app_context():
     db.create_all()
+
+
+def validar_datos(nombre, apellido, edad_raw):
+    """Valida los campos del formulario y devuelve (edad_int, error)."""
+    if not nombre or not apellido or not edad_raw:
+        return None, "Nombre, apellido y edad son obligatorios."
+
+    try:
+        edad = int(edad_raw)
+    except ValueError:
+        return None, "La edad debe ser un número."
+
+    if edad < 0 or edad > 130:
+        return None, "La edad debe ser un valor válido."
+
+    return edad, None
 
 
 @app.route("/")
@@ -23,17 +41,12 @@ def agregar():
     if request.method == "POST":
         nombre = request.form.get("nombre", "").strip()
         apellido = request.form.get("apellido", "").strip()
-        edad = request.form.get("edad", "").strip()
-        correo = request.form.get("correo", "").strip()
+        edad_raw = request.form.get("edad", "").strip()
+        correo = request.form.get("correo", "").strip() or None
 
-        if not nombre or not apellido or not edad:
-            flash("Nombre, apellido y edad son obligatorios.")
-            return redirect(url_for("agregar"))
-
-        try:
-            edad = int(edad)
-        except ValueError:
-            flash("La edad debe ser un número.")
+        edad, error = validar_datos(nombre, apellido, edad_raw)
+        if error:
+            flash(error)
             return redirect(url_for("agregar"))
 
         nueva_persona = Persona(
@@ -52,17 +65,19 @@ def editar(persona_id):
     persona = Persona.query.get_or_404(persona_id)
 
     if request.method == "POST":
-        persona.nombre = request.form.get("nombre", "").strip()
-        persona.apellido = request.form.get("apellido", "").strip()
-        correo = request.form.get("correo", "").strip()
-        edad = request.form.get("edad", "").strip()
+        nombre = request.form.get("nombre", "").strip()
+        apellido = request.form.get("apellido", "").strip()
+        edad_raw = request.form.get("edad", "").strip()
+        correo = request.form.get("correo", "").strip() or None
 
-        try:
-            persona.edad = int(edad)
-        except ValueError:
-            flash("La edad debe ser un número.")
+        edad, error = validar_datos(nombre, apellido, edad_raw)
+        if error:
+            flash(error)
             return redirect(url_for("editar", persona_id=persona_id))
 
+        persona.nombre = nombre
+        persona.apellido = apellido
+        persona.edad = edad
         persona.correo = correo
         db.session.commit()
         flash("Persona actualizada correctamente.")
@@ -81,4 +96,4 @@ def eliminar(persona_id):
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=os.environ.get("FLASK_DEBUG", "1") == "1")
