@@ -1,65 +1,202 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Registro de Personas</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #222; }
-        h1 { color: #333; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { padding: 10px; border-bottom: 1px solid #ddd; text-align: left; }
-        th { background-color: #f4f4f4; }
-        .btn { display: inline-block; padding: 8px 14px; text-decoration: none; border-radius: 4px; color: white; font-size: 14px; }
-        .btn-add { background-color: #2e7d32; margin-bottom: 15px; }
-        .btn-edit { background-color: #1565c0; margin-right: 5px; }
-        .btn-delete { background-color: #c62828; border: none; cursor: pointer; }
-        .flash { background: #fff3cd; padding: 10px; border-radius: 4px; margin-bottom: 15px; }
-        form.inline { display: inline; }
-    </style>
+<meta charset="UTF-8">
+<title>Registro de Personas</title>
+<style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #222; }
+    h1 { color: #333; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 10px; border-bottom: 1px solid #ddd; text-align: left; }
+    th { background-color: #f4f4f4; }
+    .btn { display: inline-block; padding: 8px 14px; text-decoration: none; border-radius: 4px; color: white; font-size: 14px; border: none; cursor: pointer; }
+    .btn-add { background-color: #2e7d32; margin-bottom: 15px; }
+    .btn-edit { background-color: #1565c0; margin-right: 5px; }
+    .btn-delete { background-color: #c62828; }
+    .btn-save { background-color: #2e7d32; margin-top: 18px; }
+    .btn-cancel { background-color: #757575; margin-top: 18px; margin-left: 8px; }
+    .flash { background: #fff3cd; padding: 10px; border-radius: 4px; margin-bottom: 15px; }
+    .oculto { display: none; }
+    label { display: block; margin-top: 12px; font-weight: bold; }
+    input { width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; }
+    #form-container { max-width: 500px; margin-top: 20px; }
+</style>
 </head>
 <body>
     <h1>Registro de Personas</h1>
 
-    {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            {% for message in messages %}
-                <div class="flash">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
+    <div id="flash" class="flash oculto"></div>
 
-    <a class="btn btn-add" href="{{ url_for('agregar') }}">+ Agregar persona</a>
+    <!-- Vista de lista -->
+    <div id="vista-lista">
+        <button class="btn btn-add" onclick="mostrarFormulario()">+ Agregar persona</button>
+        <table>
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Apellido</th>
+                    <th>Edad</th>
+                    <th>Correo</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tabla-personas"></tbody>
+        </table>
+    </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>Nombre</th>
-                <th>Apellido</th>
-                <th>Edad</th>
-                <th>Correo</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for persona in personas %}
-            <tr>
-                <td>{{ persona.nombre }}</td>
-                <td>{{ persona.apellido }}</td>
-                <td>{{ persona.edad }}</td>
-                <td>{{ persona.correo or "-" }}</td>
-                <td>
-                    <a class="btn btn-edit" href="{{ url_for('editar', persona_id=persona.id) }}">Editar</a>
-                    <form class="inline" action="{{ url_for('eliminar', persona_id=persona.id) }}" method="POST" onsubmit="return confirm('¿Eliminar a {{ persona.nombre }}?');">
-                        <button class="btn btn-delete" type="submit">Eliminar</button>
-                    </form>
-                </td>
-            </tr>
-            {% else %}
-            <tr>
-                <td colspan="5">No hay personas registradas todavía.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <!-- Vista de formulario (agregar / editar) -->
+    <div id="vista-formulario" class="oculto">
+        <div id="form-container">
+            <h1 id="form-titulo">Agregar Persona</h1>
+            <form id="form-persona" onsubmit="guardarPersona(event)">
+                <input type="hidden" id="persona-id">
+
+                <label for="nombre">Nombre</label>
+                <input type="text" id="nombre" required>
+
+                <label for="apellido">Apellido</label>
+                <input type="text" id="apellido" required>
+
+                <label for="edad">Edad</label>
+                <input type="number" id="edad" required>
+
+                <label for="correo">Correo</label>
+                <input type="email" id="correo">
+
+                <button class="btn btn-save" type="submit">Guardar</button>
+                <button class="btn btn-cancel" type="button" onclick="mostrarLista()">Cancelar</button>
+            </form>
+        </div>
+    </div>
+
+<script>
+const STORAGE_KEY = "registro_personas";
+
+function cargarPersonas() {
+    const datos = localStorage.getItem(STORAGE_KEY);
+    return datos ? JSON.parse(datos) : [];
+}
+
+function guardarPersonas(personas) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(personas));
+}
+
+function mostrarFlash(mensaje) {
+    const flash = document.getElementById("flash");
+    flash.textContent = mensaje;
+    flash.classList.remove("oculto");
+    setTimeout(() => flash.classList.add("oculto"), 3000);
+}
+
+function renderTabla() {
+    const personas = cargarPersonas();
+    const tbody = document.getElementById("tabla-personas");
+    tbody.innerHTML = "";
+
+    if (personas.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5">No hay personas registradas todavía.</td></tr>';
+        return;
+    }
+
+    personas.forEach(p => {
+        const fila = document.createElement("tr");
+        fila.innerHTML = `
+            <td>${escapeHtml(p.nombre)}</td>
+            <td>${escapeHtml(p.apellido)}</td>
+            <td>${p.edad}</td>
+            <td>${p.correo ? escapeHtml(p.correo) : "-"}</td>
+            <td>
+                <button class="btn btn-edit" onclick="mostrarFormulario(${p.id})">Editar</button>
+                <button class="btn btn-delete" onclick="eliminarPersona(${p.id})">Eliminar</button>
+            </td>
+        `;
+        tbody.appendChild(fila);
+    });
+}
+
+function escapeHtml(texto) {
+    const div = document.createElement("div");
+    div.textContent = texto;
+    return div.innerHTML;
+}
+
+function mostrarLista() {
+    document.getElementById("vista-lista").classList.remove("oculto");
+    document.getElementById("vista-formulario").classList.add("oculto");
+    renderTabla();
+}
+
+function mostrarFormulario(id) {
+    document.getElementById("vista-lista").classList.add("oculto");
+    document.getElementById("vista-formulario").classList.remove("oculto");
+    document.getElementById("form-persona").reset();
+
+    if (id !== undefined) {
+        const persona = cargarPersonas().find(p => p.id === id);
+        document.getElementById("form-titulo").textContent = "Editar Persona";
+        document.getElementById("persona-id").value = persona.id;
+        document.getElementById("nombre").value = persona.nombre;
+        document.getElementById("apellido").value = persona.apellido;
+        document.getElementById("edad").value = persona.edad;
+        document.getElementById("correo").value = persona.correo || "";
+    } else {
+        document.getElementById("form-titulo").textContent = "Agregar Persona";
+        document.getElementById("persona-id").value = "";
+    }
+}
+
+function guardarPersona(event) {
+    event.preventDefault();
+
+    const id = document.getElementById("persona-id").value;
+    const nombre = document.getElementById("nombre").value.trim();
+    const apellido = document.getElementById("apellido").value.trim();
+    const edadRaw = document.getElementById("edad").value.trim();
+    const correo = document.getElementById("correo").value.trim() || null;
+
+    if (!nombre || !apellido || !edadRaw) {
+        mostrarFlash("Nombre, apellido y edad son obligatorios.");
+        return;
+    }
+
+    const edad = parseInt(edadRaw, 10);
+    if (isNaN(edad) || edad < 0 || edad > 130) {
+        mostrarFlash("La edad debe ser un número válido.");
+        return;
+    }
+
+    const personas = cargarPersonas();
+
+    if (id) {
+        const persona = personas.find(p => p.id === parseInt(id, 10));
+        persona.nombre = nombre;
+        persona.apellido = apellido;
+        persona.edad = edad;
+        persona.correo = correo;
+        mostrarLista();
+        mostrarFlash("Persona actualizada correctamente.");
+    } else {
+        const nuevoId = personas.length > 0 ? Math.max(...personas.map(p => p.id)) + 1 : 1;
+        personas.push({ id: nuevoId, nombre, apellido, edad, correo });
+        mostrarLista();
+        mostrarFlash("Persona agregada correctamente.");
+    }
+
+    guardarPersonas(personas);
+}
+
+function eliminarPersona(id) {
+    const personas = cargarPersonas();
+    const persona = personas.find(p => p.id === id);
+    if (!confirm(`¿Eliminar a ${persona.nombre}?`)) return;
+
+    const nuevasPersonas = personas.filter(p => p.id !== id);
+    guardarPersonas(nuevasPersonas);
+    renderTabla();
+    mostrarFlash("Persona eliminada correctamente.");
+}
+
+renderTabla();
+</script>
 </body>
 </html>
